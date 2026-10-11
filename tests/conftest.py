@@ -1,12 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app # Импортируем наше FastAPI приложение
-from app.repositories.user_repo import user_repo
+from app.main import app
+from app.db.database import Base, engine
+import asyncio
 
-@pytest.fixture(scope="module") # scope="module" — фикстура создастся один раз для всех тестов в модуле
+@pytest.fixture(scope="session", autouse=True)
+def reset_db():
+    async def _reset():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    asyncio.run(_reset())
+
+@pytest.fixture(scope="module")
 def client():
-    """ Фикстура для создания TestClient. """
     with TestClient(app) as c:
         yield c
 
